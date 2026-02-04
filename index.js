@@ -2,9 +2,10 @@ import { Telegraf, Markup } from "telegraf";
 import "dotenv/config";
 import path from "path";
 import { fileURLToPath } from "url";
+import express from "express";
 
 if (!process.env.BOT_TOKEN) {
-  console.error("❌ BOT_TOKEN не найден. Проверь файл .env");
+  console.error("❌ BOT_TOKEN не найден. Проверь Env Vars на Render");
   process.exit(1);
 }
 
@@ -15,12 +16,10 @@ const __dirname = path.dirname(__filename);
 const QR1_PATH = path.join(__dirname, "assets", "qr1.jpeg");
 const QR2_PATH = path.join(__dirname, "assets", "qr2.jpeg");
 
-
 async function safeAnswerCbQuery(ctx) {
   try {
     await ctx.answerCbQuery();
-  } catch (e) {
-  }
+  } catch (e) {}
 }
 
 async function safeEditMessageText(ctx, text, extra) {
@@ -39,7 +38,6 @@ const WELCOME_TEXT =
   `Я бот-администратор Айгеримы\n` +
   `Здесь мягкие тренировки, забота о теле и баланс.\n` +
   `Нажми кнопку ниже, чтобы начать`;
-
 
 const AFTER_START_TEXT =
   `Если ты здесь, то твой путь к здоровью, подтянутому телу, силе и уверенности уже запущен!\n` +
@@ -128,7 +126,7 @@ const payMenu = Markup.inlineKeyboard([
   [Markup.button.callback("🏠 В меню", "BACK_MAIN")],
 ]);
 
-const selectedTariffByUser = new Map(); 
+const selectedTariffByUser = new Map();
 
 bot.start(async (ctx) => {
   await ctx.reply(WELCOME_TEXT, startKeyboard);
@@ -191,17 +189,12 @@ bot.action("PAY", async (ctx) => {
     await ctx.reply(PAY_TEXT_T2, payMenu);
   }
 
-  await ctx.replyWithPhoto(
-    { source: QR1_PATH },
-    { caption: "📌 Способ оплаты №1" }
-  );
-
+  await ctx.replyWithPhoto({ source: QR1_PATH }, { caption: "📌 Способ оплаты №1" });
   await ctx.replyWithPhoto(
     { source: QR2_PATH },
     { caption: "📌 Способ оплаты №2\n\nПосле оплаты отправь чек в Telegram: @a899818" }
   );
 });
-
 
 bot.action("BACK_TARIFFS", async (ctx) => {
   await safeAnswerCbQuery(ctx);
@@ -217,12 +210,36 @@ bot.on("text", async (ctx) => {
   await ctx.reply("Нажми /start чтобы начать заново 🙂");
 });
 
-bot.catch((err, ctx) => {
+bot.catch((err) => {
   console.error("❌ Ошибка telegraf:", err);
 });
 
-bot.launch();
-console.log("✅ Бот запущен");
+const app = express();
+app.use(express.json());
+
+app.get("/", (req, res) => res.send("ok"));
+app.get("/health", (req, res) => res.send("healthy"));
+
+const SECRET_PATH = `/telegraf/${process.env.BOT_TOKEN}`;
+
+app.use(bot.webhookCallback(SECRET_PATH));
+
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, "0.0.0.0", async () => {
+  console.log(`🌐 HTTP server listening on ${PORT}`);
+
+  const externalUrl = process.env.RENDER_EXTERNAL_URL;
+  if (!externalUrl) {
+    console.log("⚠️ RENDER_EXTERNAL_URL не найден. Добавь его в Env Vars (полный URL сервиса).");
+    return;
+  }
+
+  const webhookUrl = `${externalUrl}${SECRET_PATH}`;
+  await bot.telegram.setWebhook(webhookUrl);
+
+  console.log("✅ Webhook установлен:", webhookUrl);
+});
 
 process.once("SIGINT", () => bot.stop("SIGINT"));
 process.once("SIGTERM", () => bot.stop("SIGTERM"));
