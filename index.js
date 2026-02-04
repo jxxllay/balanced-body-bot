@@ -19,7 +19,7 @@ const QR2_PATH = path.join(__dirname, "assets", "qr2.jpeg");
 async function safeAnswerCbQuery(ctx) {
   try {
     await ctx.answerCbQuery();
-  } catch (e) {}
+  } catch (e) { }
 }
 
 async function safeEditMessageText(ctx, text, extra) {
@@ -28,7 +28,7 @@ async function safeEditMessageText(ctx, text, extra) {
   } catch (e) {
     try {
       await ctx.reply(text, extra);
-    } catch (_) {}
+    } catch (_) { }
   }
 }
 
@@ -220,7 +220,7 @@ app.use(express.json());
 app.get("/", (req, res) => res.send("ok"));
 app.get("/health", (req, res) => res.send("healthy"));
 
-const SECRET_PATH = `/telegraf/${process.env.BOT_TOKEN}`;
+const SECRET_PATH = `/telegraf/${process.env.WEBHOOK_SECRET}`;
 
 app.use(bot.webhookCallback(SECRET_PATH));
 
